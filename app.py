@@ -1,12 +1,18 @@
 import streamlit as st
 from pinecone import Pinecone, ServerlessSpec
 from openai import OpenAI
+import os
 
 # ========================
-# API KEY (ISI PUNYA KAMU)
+# AMBIL API KEY DARI ENV
 # ========================
-PINECONE_API_KEY = "ISI_API_KEY_KAMU"
-OPENAI_API_KEY = "ISI_API_KEY_KAMU"
+PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+# VALIDASI
+if not PINECONE_API_KEY or not OPENAI_API_KEY:
+    st.error("API KEY belum diset! Tambahkan di environment variable.")
+    st.stop()
 
 pc = Pinecone(api_key=PINECONE_API_KEY)
 client = OpenAI(api_key=OPENAI_API_KEY)
@@ -66,36 +72,39 @@ def get_embedding(text):
 # INSERT DATA (HANYA SEKALI)
 # ========================
 if "uploaded" not in st.session_state:
-    vectors = []
-    for id, text in artikel:
-        emb = get_embedding(text)
-        vectors.append({
-            "id": id,
-            "values": emb,
-            "metadata": {
-                "text": text
-            }
-        })
-    
-    index.upsert(vectors=vectors)
-    st.session_state.uploaded = True
+    with st.spinner("Menyiapkan database..."):
+        vectors = []
+        for id, text in artikel:
+            emb = get_embedding(text)
+            vectors.append({
+                "id": id,
+                "values": emb,
+                "metadata": {
+                    "text": text
+                }
+            })
+        
+        index.upsert(vectors=vectors)
+        st.session_state.uploaded = True
 
 # ========================
 # UI STREAMLIT
 # ========================
 st.title("🔍 Pencarian Artikel (Vector Database)")
+st.write("Cari artikel berdasarkan makna (semantic search)")
 
 query = st.text_input("Masukkan kata kunci atau kalimat:")
 
 if st.button("Cari"):
     if query:
-        query_emb = get_embedding(query)
+        with st.spinner("Mencari..."):
+            query_emb = get_embedding(query)
 
-        result = index.query(
-            vector=query_emb,
-            top_k=5,
-            include_values=False
-        )
+            result = index.query(
+                vector=query_emb,
+                top_k=5,
+                include_values=False
+            )
 
         st.subheader("Hasil Pencarian:")
 
@@ -104,3 +113,5 @@ if st.button("Cari"):
             st.write(f"📄 {artikel[idx][1]}")
             st.write(f"Similarity Score: {match.score:.4f}")
             st.write("---")
+    else:
+        st.warning("Masukkan kata kunci dulu!")
