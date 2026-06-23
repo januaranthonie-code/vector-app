@@ -3,10 +3,10 @@ from pinecone import Pinecone, ServerlessSpec
 from openai import OpenAI
 
 # ========================
-# API KEY (ISI PUNYA KAMU)
+# API KEY DARI STREAMLIT SECRETS
 # ========================
-PINECONE_API_KEY = "ISI_API_KEY_KAMU"
-OPENAI_API_KEY = "ISI_API_KEY_KAMU"
+PINECONE_API_KEY = st.secrets["PINECONE_API_KEY"]
+OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
 
 pc = Pinecone(api_key=PINECONE_API_KEY)
 client = OpenAI(api_key=OPENAI_API_KEY)
@@ -67,8 +67,10 @@ def get_embedding(text):
 # ========================
 if "uploaded" not in st.session_state:
     vectors = []
+
     for id, text in artikel:
         emb = get_embedding(text)
+
         vectors.append({
             "id": id,
             "values": emb,
@@ -76,7 +78,7 @@ if "uploaded" not in st.session_state:
                 "text": text
             }
         })
-    
+
     index.upsert(vectors=vectors)
     st.session_state.uploaded = True
 
